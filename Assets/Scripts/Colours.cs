@@ -9,6 +9,6 @@ public class Colours : MonoBehaviour
 
     public Color GetColour(int colour, int tint)
     {
-        return available[colour + tint];
+        return available[(colour * 2) + tint];
     }
 }

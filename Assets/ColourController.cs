@@ -21,12 +21,12 @@ public class ColourController : MonoBehaviour
     [SerializeField]
     [Range(1, 10)]
     //Current Timer
-    private float _curTime;
+    private float _curTime = 1;
 
     [SerializeField]
     [Range(1, 10)]
     //Max Timer
-    private float _maxTime;
+    private float _maxTime = 1;
 
     [SerializeField]
     private bool _source;
@@ -45,18 +45,19 @@ public class ColourController : MonoBehaviour
     {
         sr.color = _curColour;
 
-        if(!_source && !_canChange)
+        if (sr.color != _colours.GetColour(4,1))
         {
-            _curTime -= Time.deltaTime;
-
-            if(_curTime <= 0)
+            if (!_source && !_canChange) 
             {
-                _curTime = _maxTime;
-                _canChange = true;
+                _curTime -= Time.deltaTime;
+
+                if (_curTime <= 0)
+                {
+                    _curTime = _maxTime;
+                    _canChange = true;
+                }
             }
-
         }
-
     }
 
     private bool ChangeColour(Color _newColour)
@@ -70,7 +71,6 @@ public class ColourController : MonoBehaviour
             _curColour = _temp;
             _canChange = false;
         }
-
 
         return _matching;
     }
