@@ -34,18 +34,25 @@ public class ColourController : MonoBehaviour
     [SerializeField]
     private Colours _colours;
 
+    private Color _hunter;
+
+    private Color _default;
+
     private void Start()
     {
         sr = GetComponent<SpriteRenderer>();
         _curColour = sr.color;
         _originalColour = _curColour;
+        _hunter = _colours.GetColour(4, 1);
+        _default = _colours.GetColour(4, 0);
+
     }
 
     private void Update()
     {
         sr.color = _curColour;
 
-        if (sr.color != _colours.GetColour(4,1))
+        if (sr.color != _hunter)
         {
             if (!_source && !_canChange) 
             {
@@ -68,6 +75,15 @@ public class ColourController : MonoBehaviour
 
         if (!_matching)
         {
+
+            if(_temp == _hunter)
+            {
+                if(!_source && _curColour != _default)
+                {
+                    _temp = _default;
+                }
+            }
+            
             _curColour = _temp;
             _canChange = false;
         }
