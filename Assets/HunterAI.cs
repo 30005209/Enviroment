@@ -1,28 +1,53 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEditor;
 using Pathfinding;
 
+public class NamedArrayAttribute : PropertyAttribute
+{
+    public readonly string[] names;
+    public NamedArrayAttribute(string[] names) { this.names = names; }
+}
+
+[CustomPropertyDrawer(typeof(NamedArrayAttribute))]
+public class NamedArrayDrawer : PropertyDrawer
+{
+    public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
+    {
+        try
+        {
+            int pos = int.Parse(property.propertyPath.Split('[', ']')[1]);
+            EditorGUI.PropertyField(position, property, new GUIContent(((NamedArrayAttribute)attribute).names[pos]));
+        }
+        catch
+        {
+            EditorGUI.PropertyField(position, property);
+        }
+    }
+}
 
 [RequireComponent(typeof(ColourController))]
 [RequireComponent(typeof(Seeker))]
 [RequireComponent(typeof(Rigidbody2D))]
 public class HunterAI : MonoBehaviour
 {
+    enum _setting { _default, _current, _max };
+
     [SerializeField]
     private Transform _target;
 
     [SerializeField]
-    private float _maxSpeed;
+    [NamedArrayAttribute(new string[] { "Default", "Current", "Max" })]
+    private float[] _speed;
 
     [SerializeField]
-    private float _minSpeed = 200f;
+    [NamedArrayAttribute(new string[] { "Default", "Current", "Max" })]
+    private float[] _radius;
 
     [SerializeField]
-    private float _defaultSpeed;
-
-    [SerializeField]
-    private float _curSpeed = 200f;
+    [NamedArrayAttribute(new string[] { "Default", "Current", "Max" })]
+    private float[] _time;
 
     [SerializeField]
     private float _nextWaypointDistance = 3.0f;
@@ -38,12 +63,6 @@ public class HunterAI : MonoBehaviour
     private Rigidbody2D _rb;
 
     [SerializeField]
-    private float _maxTime = 10.0f;
-
-    [SerializeField]
-    private float _curTime = 10.0f;
-
-    [SerializeField]
     private bool _foundPlayer = false;
 
     [SerializeField]
@@ -55,15 +74,6 @@ public class HunterAI : MonoBehaviour
     [SerializeField]
     private CircleCollider2D _triggerRange;
 
-    [SerializeField]
-    private float _maxRadius = 3;
-
-    [SerializeField]
-    private float _curRadius;
-
-    [SerializeField]
-    private float _defaultRadius = 1;
-
 
     // Start is called before the first frame update
     void Start()
@@ -74,10 +84,9 @@ public class HunterAI : MonoBehaviour
 
         InvokeRepeating("UpdatePath", 0f, 0.25f);
 
-        _curRadius = _defaultRadius;
-        _curSpeed = _defaultSpeed;
-        _maxSpeed = _defaultSpeed * 1.5f;
-
+        _radius = new float[] { 1f, 1f, 3f };
+        _speed  = new float[] { 400f, 400f, 600f };
+        _time = new float[] { 10f, 10f, 10f };
     }
 
     void PickRandomTarget()
@@ -92,7 +101,7 @@ public class HunterAI : MonoBehaviour
 
     private void Update()
     {
-        _curTime -= Time.deltaTime;
+        _time[(int)_setting._current] -= Time.deltaTime;
     }
 
     void UpdatePath()
@@ -104,7 +113,7 @@ public class HunterAI : MonoBehaviour
 
         if(!_foundPlayer)
         {
-            if(_curTime < 0)
+            if(_time[(int)_setting._current] < 0)
             {
                 ResetTimer();
                 PickRandomTarget();
@@ -113,17 +122,17 @@ public class HunterAI : MonoBehaviour
         }
         else
         {
-            if(_curTime < 0)
+            if(_time[(int)_setting._current] < 0)
             {
                 ResetTimer();
-                _curSpeed = _curSpeed * 0.8f;
+                _speed[(int)_setting._current] *= 0.8f;
             }
         }
     }
 
     void ResetTimer()
     {
-        _curTime = (float)Random.Range(_maxTime / 2, _maxTime);
+        _time[(int)_setting._current] = (float)Random.Range(_time[(int)_setting._max] * 0.5f , _time[(int)_setting._max]);
 
     }
     private void OnTriggerEnter2D(Collider2D collision)
@@ -150,30 +159,34 @@ public class HunterAI : MonoBehaviour
 
     void IncreaseRange()
     {
-        _triggerRange.radius = _maxRadius;
+        _triggerRange.radius = _radius[(int)_setting._max];
     }
 
     void ResetRange()
     {
-        _triggerRange.radius = _defaultRadius;
+        _triggerRange.radius = _radius[(int)_setting._default];
+    }
+
+    void IncreaseSpeed()
+    {
+        _speed[(int)_setting._current] = _speed[(int)_setting._max];
     }
 
     void ResetSpeed()
     {
-        _curSpeed = _defaultSpeed;
+        _speed[(int)_setting._current] = _speed[(int)_setting._default];
     }
 
     void FoundPlayer()
     {
         _foundPlayer = true;
-        _curSpeed = _maxSpeed;
+        IncreaseSpeed();
         IncreaseRange();
     }
     
     void LostPlayer()
     {
         _foundPlayer = false;
-        _curSpeed = _defaultSpeed;
         ResetRange();
         ResetSpeed();
     }
@@ -188,7 +201,6 @@ public class HunterAI : MonoBehaviour
         }
     }
 
-    // Update is called once per frame
     void FixedUpdate()
     {
         if(_path != null)
@@ -196,7 +208,7 @@ public class HunterAI : MonoBehaviour
             _reachedEndOfPath =_currentWaypoint >= _path.vectorPath.Count;
             
             Vector2 _direction = ((Vector2)_path.vectorPath[_currentWaypoint] - _rb.position).normalized;
-            Vector2 _force = _direction * _curSpeed * Time.deltaTime;
+            Vector2 _force = _direction * _speed[(int)_setting._current] * Time.deltaTime;
 
             _rb.AddForce(_force);
 
